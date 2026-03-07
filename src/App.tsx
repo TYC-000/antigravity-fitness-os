@@ -1,13 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { GoogleGenAI, Type } from '@google/genai';
 import { 
   Activity, BrainCircuit, Loader2, AlertCircle, CheckCircle2, 
   Ruler, Shield, Zap, Target, Dumbbell, SquareActivity, 
   Cylinder, Rocket, Microscope, ChevronDown, ChevronUp, Printer
 } from 'lucide-react';
-
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const EQUIPMENT_LIST = [
   { id: 'dumbbells', label: '啞鈴', icon: Dumbbell },
@@ -63,14 +59,10 @@ export default function App() {
 
   const handleExportPDF = async () => {
     setIsExporting(true);
-    
     try {
-      // Yield to React to ensure state updates
       await new Promise(resolve => setTimeout(resolve, 100));
-      
       const htmlToImage = await import('html-to-image');
       const element = exportRef.current;
-      
       if (!element) return;
 
       const dataUrl = await htmlToImage.toPng(element, {
@@ -79,7 +71,6 @@ export default function App() {
         pixelRatio: 2,
       });
 
-      // Create a temporary link to trigger download
       const link = document.createElement('a');
       link.download = `Antigravity_Prescription_${new Date().toISOString().slice(0,10)}.png`;
       link.href = dataUrl;
@@ -92,125 +83,154 @@ export default function App() {
     }
   };
 
+  // --- 核心專家系統引擎 (Rule-based Engine) ---
   const generatePrescription = async () => {
     setLoading(true);
     setError('');
     setResult(null);
 
+    // 模擬網路延遲，創造「運算中」的視覺回饋 (可移除，僅為 UI 體驗)
+    await new Promise(resolve => setTimeout(resolve, 600));
+
     try {
       if (availableEquipment.length === 0) {
-        throw new Error('Please select at least one piece of available equipment.');
+        throw new Error('請至少選擇一項可用器材。 (Please select at least one equipment)');
       }
 
-      // --- Medical Decision Logic (Mock API) ---
-      let modifiedEquipment = [...availableEquipment];
-      let forcedExercises: string[] = [];
-      let reasoningAdditions: string[] = [];
-      let feedbackAdditions: string[] = [];
+      let exercises: string[] = [];
+      let reasoning: string[] = [];
+      let feedback: string[] = [];
+      let currentEquipment = [...availableEquipment];
 
-      // Rule A: Neural Fatigue Protection
+      // 1. InBody 代謝與神經疲勞防護邏輯
       if (phaseAngle < 5.0) {
-        feedbackAdditions.push('降低總容量 20%-30% (細胞層級疲勞防護)');
-        modifiedEquipment = modifiedEquipment.filter(eq => eq !== 'barbell');
-        reasoningAdditions.push('偵測到細胞層級疲勞 (Phase Angle < 5.0)，已排除高神經徵召之複雜自由重量 (Barbell)。');
+        feedback.push('⚠️ [神經疲勞警示] 偵測到細胞相位角 (PhA < 5.0) 偏低，建議本次訓練總容量調降 20%-30%。');
+        currentEquipment = currentEquipment.filter(eq => eq !== 'barbell');
+        reasoning.push('因應細胞層級疲勞指標，系統已主動排除需高度神經徵召之「槓鈴自由重量」動作。');
       }
 
-      // Rule B: Asymmetry Compensation
       if (asymmetry > 5.0) {
-        forcedExercises.push('Dumbbell Bulgarian Split Squat (單側保加利亞分腿蹲)');
-        reasoningAdditions.push('偵測到肌肉不對稱 (Asymmetry > 5.0%)，已強制導入單側獨立發力動作以防範雙側神經缺陷。');
-        if (!modifiedEquipment.includes('dumbbells')) {
-          modifiedEquipment.push('dumbbells');
-        }
+        reasoning.push(`[肌肉不對稱補償] 偵測到顯著節段不對稱 (${asymmetry}%)，已強制導入單側獨立發力動作以防範神經缺陷加劇。`);
       }
 
-      // Rule C: Eccentric Load Reduction (Inflammation & Edema Protection)
       if (ecwRatio > 0.395) {
-        forcedExercises.push('Leg Press (蹬舉機)');
-        reasoningAdditions.push('警報：偵測到細胞外水分比率 (ECW/TBW > 0.395) 異常，暗示潛在的系統性發炎或嚴重的運動誘發性肌肉損傷 (EIMD)。演算法已主動過濾高離心收縮 (Eccentric) 負荷之動作，以避免發炎反應加劇。');
-        if (!modifiedEquipment.includes('leg_press')) {
-          modifiedEquipment.push('leg_press');
-        }
+        feedback.push('🚨 [水腫發炎防護] 細胞外水分比 (ECW/TBW > 0.395) 異常，請注意組間恢復時間，並避免力竭。');
+        reasoning.push('為避免運動誘發性肌肉損傷 (EIMD) 惡化，演算法已主動過濾高離心拉伸 (Eccentric-focused) 之負荷動作。');
       }
 
-      const payload = {
-        user_metrics: {
-          femur_to_torso_ratio: femurRatio,
-          core_stability_index: coreStability,
-          current_rpe_last_set: currentRPE,
-          segmental_asymmetry_percent: asymmetry,
-          phase_angle: phaseAngle,
-          ecw_tbw_ratio: ecwRatio
-        },
-        available_equipment: modifiedEquipment,
-        target_muscle_group: targetMuscleGroup,
-        forced_exercises: forcedExercises,
-        reasoning_additions: reasoningAdditions,
-        feedback_additions: feedbackAdditions
-      };
-
-      const prompt = JSON.stringify(payload, null, 2);
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: prompt,
-        config: {
-          systemInstruction: `你現在是「Antigravity Fitness OS」的核心運算大腦。你結合了「運動生理與生物力學專家」與「資料科學家」的角色。你的唯一任務是接收使用者的「人體測量 JSON 數據」與「可用器材環境」，並進行約束滿足問題（Constraint Satisfaction Problem）演算，輸出最優化的個人運動處方。
-
-【生物力學演算約束 (Biomechanical Constraints)】
-肢體比例適配 (Limb Proportions)：若輸入數據顯示使用者為「長股骨/短軀幹（high femur-to-torso ratio）」，必須在下肢推（Knee Dominant）的動作中，大幅降低「傳統槓鈴背蹲舉」的推薦權重，並強制替換為「哈克深蹲機（Hack Squat）」或「保加利亞分腿蹲」，以減少腰椎剪力（Shear Force）。
-環境約束過濾 (Environmental Filtering)：你所推薦的每一項動作，其所需器材必須嚴格存在於使用者提供的 available_equipment 陣列中。絕對不可推薦使用者缺乏的器材。
-自律調節演算法 (Autoregulation)：若使用者輸入了上一組的 RPE（自覺感受強度，範圍 1-10），你必須依據漸進式超負荷（Progressive Overload）原則計算下一步。若前一組 RPE < 7，建議增加 2.5%-5% 的負荷；若 RPE > 9，建議維持重量但減少 1 次重複次數。
-
-【進階代謝約束 (Advanced Metabolic Constraints)】
-若 JSON 中包含 forced_exercises，必須將其加入推薦動作清單。
-若 JSON 中包含 reasoning_additions，必須將其完整納入 biomechanical_reasoning 中。
-若 JSON 中包含 feedback_additions，必須將其完整納入 autoregulation_feedback 中。
-若 ECW/TBW > 0.395，必須強制從推薦動作中排除「Dumbbell Romanian Deadlift (啞鈴羅馬尼亞硬舉)」或其他高離心拉伸動作。
-
-【輸出格式要求 (Output Schema)】
-為了讓前端應用程式能順利解析，你必須嚴格以 JSON 格式輸出，不可包含任何 Markdown 標記（如 \`\`\`json）或額外的閒聊文字。必須包含以下鍵值：
-recommended_exercises (Array): 推薦動作清單。
-biomechanical_reasoning (String): 以學術語言解釋為何進行此器材適配。
-autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              recommended_exercises: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "推薦動作清單"
-              },
-              biomechanical_reasoning: {
-                type: Type.STRING,
-                description: "以學術語言解釋為何進行此器材適配"
-              },
-              autoregulation_feedback: {
-                type: Type.STRING,
-                description: "基於 RPE 的下一組負荷調整建議"
-              }
-            },
-            required: ["recommended_exercises", "biomechanical_reasoning", "autoregulation_feedback"]
+      // 2. 生物力學與器材適配邏輯 (依部位分類)
+      switch (targetMuscleGroup) {
+        case 'quadriceps_and_glutes':
+          if (femurRatio === 'high') {
+             reasoning.push('針對「長股骨」比例，系統已優化深蹲力學，減少腰椎剪力，將重點轉移至穩定度較高的下肢推舉。');
+             if (currentEquipment.includes('hack_squat_machine')) exercises.push('Hack Squat (哈克深蹲)');
+             else if (currentEquipment.includes('leg_press')) exercises.push('Leg Press (腿推機)');
+             else if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Goblet Squat (啞鈴高腳杯深蹲)');
+          } else {
+             reasoning.push('針對正常/短股骨比例，建議執行常規深蹲動作以最大化全身性徵召。');
+             if (currentEquipment.includes('barbell')) exercises.push('Barbell Back Squat (槓鈴背蹲舉)');
+             else if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Split Squat (啞鈴分腿蹲)');
           }
-        }
+          
+          if (asymmetry > 5.0 && currentEquipment.includes('dumbbells')) {
+            exercises.push('Dumbbell Bulgarian Split Squat (單側保加利亞分腿蹲)');
+          } else if (currentEquipment.includes('cable_machine')) {
+             exercises.push('Cable Pull-through (纜繩後拉)');
+          } else if (currentEquipment.includes('kettlebell')) {
+             exercises.push('Kettlebell Swing (壺鈴擺盪)');
+          }
+          break;
+
+        case 'chest_and_triceps':
+          reasoning.push('胸三頭肌群訓練已根據您的核心穩定度與可用器材進行配對。');
+          if (currentEquipment.includes('bench') && currentEquipment.includes('barbell') && coreStability !== 'low') {
+             exercises.push('Barbell Bench Press (槓鈴臥推)');
+          } else if (currentEquipment.includes('bench') && currentEquipment.includes('dumbbells')) {
+             exercises.push('Dumbbell Bench Press (啞鈴臥推)');
+          }
+          
+          if (currentEquipment.includes('cable_machine')) {
+            exercises.push('Cable Chest Fly (纜繩飛鳥)');
+            exercises.push('Cable Tricep Pushdown (纜繩三頭肌下壓)');
+          } else if (currentEquipment.includes('dumbbells')) {
+            exercises.push('Dumbbell Overhead Tricep Extension (啞鈴過頭三頭伸展)');
+          }
+          break;
+          
+        case 'back_and_biceps':
+          reasoning.push('背二頭肌群著重於垂直與水平拉力動作的平衡。');
+          if (currentEquipment.includes('pull_up_bar')) exercises.push('Pull-ups (引體向上)');
+          else if (currentEquipment.includes('cable_machine')) exercises.push('Lat Pulldown (滑輪下拉)');
+          
+          if (currentEquipment.includes('dumbbells') && currentEquipment.includes('bench')) {
+             exercises.push('Chest-Supported Dumbbell Row (胸靠啞鈴划船)');
+          } else if (currentEquipment.includes('barbell') && coreStability !== 'low') {
+             exercises.push('Barbell Row (槓鈴划船)');
+          }
+          
+          if (currentEquipment.includes('dumbbells')) {
+             exercises.push('Dumbbell Bicep Curl (啞鈴二頭彎舉)');
+          }
+          break;
+
+        case 'hamstrings_and_calves':
+           if (ecwRatio <= 0.395) {
+              reasoning.push('已安排高張力的後側鏈訓練。');
+              if (currentEquipment.includes('barbell')) exercises.push('Barbell Romanian Deadlift (槓鈴羅馬尼亞硬舉)');
+              else if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell RDL (啞鈴羅馬尼亞硬舉)');
+           } else {
+              reasoning.push('因水分發炎指標偏高，已排除 RDL 等高離心動作，改以低損傷動作替代。');
+           }
+           
+           if (currentEquipment.includes('cable_machine')) exercises.push('Cable Pull-through (纜繩後拉)');
+           if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Calf Raise (啞鈴提踵)');
+           break;
+
+        case 'shoulders_and_core':
+           reasoning.push('肩部訓練已根據您的核心穩定度評估最佳抗重力姿勢。');
+           if (coreStability === 'high' && currentEquipment.includes('barbell')) {
+              exercises.push('Standing Barbell Overhead Press (站姿槓鈴肩推)');
+           } else if (currentEquipment.includes('dumbbells')) {
+              exercises.push('Seated Dumbbell Shoulder Press (坐姿啞鈴肩推)');
+           }
+           
+           if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Lateral Raise (啞鈴側平舉)');
+           if (currentEquipment.includes('cable_machine')) exercises.push('Cable Crunch (纜繩捲腹)');
+           break;
+      }
+
+      // 保底機制：如果沒有配對到任何動作
+      if (exercises.length === 0) {
+         exercises.push('Bodyweight Squat (徒手深蹲)');
+         exercises.push('Push-ups (伏地挺身)');
+         reasoning.push('⚠️ 在目前的環境約束下，系統無法為該部位找到最完美的重訓器材配對，已自動降級為自體重量基礎訓練模式。');
+      }
+
+      // 3. RPE 自律調節反饋邏輯
+      if (currentRPE <= 5) {
+         feedback.push('📈 [漸進性超負荷] 前次 RPE < 6 (相對輕鬆)，建議本次主要動作的訓練重量增加 5%，或增加 2 次反覆次數。');
+      } else if (currentRPE >= 8) {
+         feedback.push('⚓ [負荷維持] 前次 RPE ≥ 8 (逼近力竭)，建議維持原重量，專注於動作控制與向心爆發力。');
+      } else {
+         feedback.push('⚖️ [穩定適應] 前次 RPE 位於最佳訓練區間 (6-7)，建議嘗試微幅提升重量 (2.5%) 或維持現狀。');
+      }
+
+      // 組裝最終處方
+      setResult({
+        recommended_exercises: [...new Set(exercises)], // 移除重複項
+        biomechanical_reasoning: reasoning.join(' '),
+        autoregulation_feedback: feedback.join(' ')
       });
 
-      const text = response.text;
-      if (text) {
-        setResult(JSON.parse(text));
-      } else {
-        throw new Error('No response from AI.');
-      }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during generation.');
+      setError(err.message || '運算過程中發生未預期錯誤。');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 flex flex-col items-center print:p-0 print:bg-white">
+    <div className="min-h-screen p-4 md:p-8 flex flex-col items-center print:p-0 print:bg-white bg-slate-950 text-slate-200">
       <div className="w-full max-w-6xl print:max-w-none">
         {/* Header */}
         <header className="mb-8 flex items-center justify-between print:hidden">
@@ -220,7 +240,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">Antigravity Fitness OS</h1>
-              <p className="text-sm text-gray-400 font-mono mt-1">v2.0 // Biomechanical Optimization Engine</p>
+              <p className="text-sm text-gray-400 font-mono mt-1">v3.0 // Edge-Computed CDSS Engine</p>
             </div>
           </div>
         </header>
@@ -230,7 +250,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
           <div className={`lg:col-span-5 space-y-6 print:hidden ${isExporting ? 'hidden' : ''}`}>
             
             {/* User Metrics */}
-            <div className="glass-panel p-6 space-y-6">
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 space-y-6">
               <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
                 <Activity className="w-5 h-5 text-blue-400" />
                 <h2 className="text-lg font-semibold text-gray-200">User Metrics</h2>
@@ -329,7 +349,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                 </div>
               </div>
 
-              {/* Advanced Metabolic Metrics (Progressive Disclosure) */}
+              {/* Advanced Metabolic Metrics */}
               <div className="mt-6 border-t border-gray-800 pt-4">
                 <button 
                   onClick={() => setShowAdvanced(!showAdvanced)}
@@ -344,79 +364,26 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
 
                 {showAdvanced && (
                   <div className="mt-4 space-y-6 p-4 bg-[#1a1a1a] rounded-lg border border-gray-800">
-                    {/* Segmental Asymmetry */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-medium text-gray-400">
-                          Segmental Asymmetry % (節段肌肉不對稱率)
-                        </label>
-                        <span className={`text-sm font-mono font-bold ${asymmetry > 5.0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                          {asymmetry.toFixed(1)}%
-                        </span>
+                        <label className="text-xs font-medium text-gray-400">Segmental Asymmetry % (節段肌肉不對稱率)</label>
+                        <span className={`text-sm font-mono font-bold ${asymmetry > 5.0 ? 'text-red-400' : 'text-emerald-400'}`}>{asymmetry.toFixed(1)}%</span>
                       </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="15"
-                        step="0.1"
-                        value={asymmetry}
-                        onChange={(e) => setAsymmetry(parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                      />
-                      <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                        <span>0% (Symmetrical)</span>
-                        <span>15% (Severe)</span>
-                      </div>
+                      <input type="range" min="0" max="15" step="0.1" value={asymmetry} onChange={(e) => setAsymmetry(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                     </div>
-
-                    {/* Phase Angle */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-medium text-gray-400">
-                          Phase Angle, PhA (細胞相位角)
-                        </label>
-                        <span className={`text-sm font-mono font-bold ${phaseAngle < 5.0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                          {phaseAngle.toFixed(1)}
-                        </span>
+                        <label className="text-xs font-medium text-gray-400">Phase Angle, PhA (細胞相位角)</label>
+                        <span className={`text-sm font-mono font-bold ${phaseAngle < 5.0 ? 'text-red-400' : 'text-emerald-400'}`}>{phaseAngle.toFixed(1)}</span>
                       </div>
-                      <input
-                        type="range"
-                        min="3.0"
-                        max="10.0"
-                        step="0.1"
-                        value={phaseAngle}
-                        onChange={(e) => setPhaseAngle(parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                      />
-                      <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                        <span>3.0 (Fatigued)</span>
-                        <span>10.0 (Optimal)</span>
-                      </div>
+                      <input type="range" min="3.0" max="10.0" step="0.1" value={phaseAngle} onChange={(e) => setPhaseAngle(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                     </div>
-
-                    {/* ECW/TBW Ratio */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-medium text-gray-400">
-                          ECW/TBW Ratio (細胞外水分比率)
-                        </label>
-                        <span className={`text-sm font-mono font-bold ${ecwRatio > 0.395 ? 'text-orange-500' : 'text-emerald-400'}`}>
-                          {ecwRatio.toFixed(3)}
-                        </span>
+                        <label className="text-xs font-medium text-gray-400">ECW/TBW Ratio (細胞外水分比率)</label>
+                        <span className={`text-sm font-mono font-bold ${ecwRatio > 0.395 ? 'text-orange-500' : 'text-emerald-400'}`}>{ecwRatio.toFixed(3)}</span>
                       </div>
-                      <input
-                        type="range"
-                        min="0.360"
-                        max="0.420"
-                        step="0.001"
-                        value={ecwRatio}
-                        onChange={(e) => setEcwRatio(parseFloat(e.target.value))}
-                        className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                      />
-                      <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                        <span>0.360 (Healthy)</span>
-                        <span>0.420 (Edema)</span>
-                      </div>
+                      <input type="range" min="0.360" max="0.420" step="0.001" value={ecwRatio} onChange={(e) => setEcwRatio(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                     </div>
                   </div>
                 )}
@@ -424,7 +391,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
             </div>
 
             {/* Target Muscle Group */}
-            <div className="glass-panel p-6">
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="w-5 h-5 text-blue-400" />
                 <h2 className="text-lg font-semibold text-gray-200">Target Muscle Group</h2>
@@ -447,7 +414,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
             </div>
 
             {/* Available Equipment */}
-            <div className="glass-panel p-6">
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2">
                   <Dumbbell className="w-5 h-5 text-blue-400" />
@@ -458,13 +425,13 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                     onClick={() => setAvailableEquipment(['dumbbells', 'bench'])}
                     className="px-3 py-1.5 text-xs font-medium rounded-full border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                   >
-                    🏠 居家訓練 (Home Gym)
+                    🏠 居家訓練
                   </button>
                   <button
                     onClick={() => setAvailableEquipment(EQUIPMENT_LIST.map(eq => eq.id))}
                     className="px-3 py-1.5 text-xs font-medium rounded-full border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                   >
-                    🏢 全器材館 (Mega Gym)
+                    🏢 全館器材
                   </button>
                 </div>
               </div>
@@ -499,7 +466,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
               {loading ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  <span>Computing Prescription...</span>
+                  <span>運算處方中... (Computing...)</span>
                 </>
               ) : (
                 <>
@@ -519,7 +486,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
 
           {/* Output Panel */}
           <div className="lg:col-span-7">
-            <div className="glass-panel p-6 h-full min-h-[600px] flex flex-col">
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 h-full min-h-[600px] flex flex-col">
               
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
                 <div className="flex items-center gap-2">
@@ -533,14 +500,13 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                     className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg transition-colors border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-                    <span>{isExporting ? '⏳ 渲染報告中... (Rendering...)' : '📄 匯出處方報告 (Export PDF)'}</span>
+                    <span>{isExporting ? '⏳ 渲染報告中...' : '📄 匯出處方報告 (Export PDF)'}</span>
                   </button>
                 )}
               </div>
 
               {result ? (
                 <div className="space-y-8 flex-1 overflow-y-auto pr-2">
-                  {/* Recommended Exercises */}
                   <section>
                     <h3 className="text-sm font-mono mb-3 uppercase tracking-wider text-gray-500">Recommended Exercises</h3>
                     <div className="space-y-2">
@@ -555,7 +521,6 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                     </div>
                   </section>
 
-                  {/* Biomechanical Reasoning */}
                   <section>
                     <h3 className="text-sm font-mono mb-3 uppercase tracking-wider text-gray-500">Biomechanical Reasoning</h3>
                     <div className="p-5 bg-blue-950/20 border border-blue-900/30 rounded-lg relative overflow-hidden">
@@ -566,7 +531,6 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                     </div>
                   </section>
 
-                  {/* Autoregulation Feedback */}
                   <section>
                     <h3 className="text-sm font-mono mb-3 uppercase tracking-wider text-gray-500">Autoregulation Feedback</h3>
                     <div className="p-5 bg-emerald-950/20 border border-emerald-900/30 rounded-lg relative overflow-hidden">
@@ -586,7 +550,7 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                     <BrainCircuit className="w-8 h-8 opacity-50" />
                   </div>
                   <p className="text-sm font-mono text-center max-w-xs">
-                    Awaiting input parameters to compute optimal biomechanical prescription.
+                    等待輸入參數... 內建 CDSS 決策引擎已就緒。
                   </p>
                 </div>
               )}
@@ -598,16 +562,12 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
       {/* Hidden Export View for html-to-image */}
       <div className="overflow-hidden h-0 w-0 absolute top-[-9999px] left-[-9999px]">
         <div ref={exportRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', color: '#0f172a' }}>
-          {/* Header */}
           <div style={{ marginBottom: '32px', borderBottom: '2px solid #1e293b', paddingBottom: '16px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Antigravity Fitness OS // 個人化生物力學運動處方</h1>
             <p style={{ fontSize: '14px', color: '#64748b', marginTop: '8px' }}>Generated on: {new Date().toLocaleString()}</p>
           </div>
-
-          {/* Content */}
           {result && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              {/* Recommended Exercises */}
               <section>
                 <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Recommended Exercises</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -621,28 +581,20 @@ autoregulation_feedback (String): 基於 RPE 的下一組負荷調整建議。`,
                   ))}
                 </div>
               </section>
-
-              {/* Biomechanical Reasoning */}
               <section>
                 <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Biomechanical Reasoning</h3>
                 <div style={{ padding: '20px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#3b82f6' }}></div>
-                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#334155', margin: 0 }}>
-                    {result.biomechanical_reasoning}
-                  </p>
+                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#334155', margin: 0 }}>{result.biomechanical_reasoning}</p>
                 </div>
               </section>
-
-              {/* Autoregulation Feedback */}
               <section>
                 <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Autoregulation Feedback</h3>
                 <div style={{ padding: '20px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#10b981' }}></div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                     <CheckCircle2 style={{ width: '20px', height: '20px', flexShrink: 0, marginTop: '2px', color: '#059669' }} />
-                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#334155', margin: 0 }}>
-                      {result.autoregulation_feedback}
-                    </p>
+                    <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#334155', margin: 0 }}>{result.autoregulation_feedback}</p>
                   </div>
                 </div>
               </section>
