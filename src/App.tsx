@@ -3,7 +3,7 @@ import {
   Activity, BrainCircuit, Loader2, AlertCircle, CheckCircle2, 
   Ruler, Shield, Zap, Target, Dumbbell, SquareActivity, 
   Cylinder, Rocket, Microscope, Printer, Apple,
-  Watch, Moon, HeartPulse 
+  Watch, Moon, HeartPulse, ShoppingBag // ✨ 新增 ShoppingBag 圖示
 } from 'lucide-react';
 
 const EQUIPMENT_LIST = [
@@ -24,6 +24,35 @@ const MUSCLE_GROUPS = [
   { id: 'hamstrings_and_calves', label: 'Hamstrings & Calves (腿後側與小腿)' },
   { id: 'shoulders_and_core', label: 'Shoulders & Core (肩部與核心)' },
 ];
+
+// ✨ 新增：便利商店部位專項輪替資料庫 (CVS Nutrition Database)
+const CVS_NUTRITION_DB: Record<string, { pre: string[], post: string[], rationale: string }> = {
+  'quadriceps_and_glutes': {
+    pre: ['香蕉 + 鮭魚飯糰 (快速果糖與複合碳水)', '地瓜 + 無糖豆漿 (緩釋能量)'],
+    post: ['雞胸肉 + 地瓜 + 豆漿 (P ≈ 32g)', '茶葉蛋兩顆 + 鮭魚飯糰 + 燕麥飲 (P ≈ 28g)'],
+    rationale: '最高碳水需求。針對下肢大肌群的高強度功率輸出，需最大化肌糖原儲備與回填。'
+  },
+  'back_and_biceps': {
+    pre: ['鮪魚飯糰 + 黑咖啡 (提升中樞神經專注力)', '燕麥飲 + 香蕉 (高鉀電解質)'],
+    post: ['鮪魚沙拉 + 鮪魚飯糰 + 優格 (P ≈ 35g)', '鹽味雞胸肉 + 巧克力牛奶 (P ≈ 30g)'],
+    rationale: '中碳水 + 高蛋白。維持多關節水平/垂直拉類動作所需的爆發力與背部肌群修復。'
+  },
+  'chest_and_triceps': {
+    pre: ['鮭魚飯糰 + 豆漿 (均衡供能)', '總匯三明治 + 黑咖啡 (快速排空)'],
+    post: ['雞胸肉 + 高蛋白牛乳 (P ≈ 40g)', '石安牧場溫泉蛋兩顆 + 雞肉沙拉 + 豆漿 (P ≈ 35g)'],
+    rationale: '極高蛋白質攝取。優化大重量推類動作後，胸大肌與三頭肌的強烈肌肉肥大 (Hypertrophy) 反應。'
+  },
+  'hamstrings_and_calves': {
+    pre: ['地瓜 + 香蕉 (高纖與速效碳水)', '燕麥飲 + 豆漿 (流質好吸收)'],
+    post: ['雞胸肉 + 地瓜 + 牛奶 (P ≈ 32g)', '鮪魚沙拉 + 烤地瓜 + 優格飲 (P ≈ 28g)'],
+    rationale: '中高碳水。補足後側動力鏈 (Posterior Chain) 高離心訓練產生的代謝壓力與微血管損傷。'
+  },
+  'shoulders_and_core': {
+    pre: ['香蕉 + 黑咖啡 (輕量供能抗疲勞)', '無加糖輕量優格 (極速胃排空)'],
+    post: ['豆腐沙拉 + 茶葉蛋 + 豆漿 (P ≈ 27g)', '毛豆 + 雞胸肉片 + 無糖綠茶 (P ≈ 25g)'],
+    rationale: '低碳水 + 高蛋白。該部位總能量消耗 (TDEE佔比) 相對較低，控制碳水避免無謂脂肪囤積。'
+  }
+};
 
 export default function App() {
   const [femurRatio, setFemurRatio] = useState<'low' | 'normal' | 'high'>('high');
@@ -47,21 +76,22 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  
   const [result, setResult] = useState<{
     recommended_exercises: string[];
     biomechanical_reasoning: string;
     autoregulation_feedback: string;
     nutrition_prescription: string;
+    cvs_protocol: { pre: string, post: string, rationale: string }; // ✨ 新增 CVS 處方型別
   } | null>(null);
+  
   const [error, setError] = useState('');
 
-  // ✨ 新增：台灣四季旬食資料庫 (Seasonal Fruits Database)
   const [currentSeason, setCurrentSeason] = useState('');
   const [seasonalFruits, setSeasonalFruits] = useState('');
 
-  // 系統啟動時，自動偵測當前月份並指派當季水果
   useEffect(() => {
-    const month = new Date().getMonth() + 1; // getMonth() 回傳 0-11
+    const month = new Date().getMonth() + 1;
     if (month >= 3 && month <= 5) {
       setCurrentSeason('春季');
       setSeasonalFruits('聖女小番茄、草莓或枇杷 (富含高濃度維生素C與茄紅素)');
@@ -141,29 +171,34 @@ export default function App() {
         metabolicDemand = 'moderate';
       }
 
-      // ✨ 1. 雙維度營養矩陣 + 四季旬食模組
+      // ✨ CVS 輪替抽樣引擎 (Randomization Engine for Diet Variety)
+      const cvsData = CVS_NUTRITION_DB[targetMuscleGroup];
+      const randomPre = cvsData.pre[Math.floor(Math.random() * cvsData.pre.length)];
+      const randomPost = cvsData.post[Math.floor(Math.random() * cvsData.post.length)];
+
+      // 1. 雙維度營養矩陣 + 四季旬食模組
       if (isInflamed) {
         const sourceText = dataSource === 'wearable' ? '安靜心率 (RHR) 異常升高' : '細胞外水分比 (ECW/TBW) 偏高';
         nutrition = `🚨 [抗發炎與代謝介入] 偵測到 ${sourceText}，暗示潛在系統性發炎壓力。`;
         if (metabolicDemand === 'high') {
-           nutrition += `針對大肌群訓練誘發的強烈發炎反應，建議訓練後立即補充高劑量 Omega-3 (如：深海魚油或野生鮭魚)，並強烈建議搭配台灣${currentSeason}盛產的 ${seasonalFruits}，以強效清除活性氧類 (ROS) 並調節微血管通透性。`;
+           nutrition += `針對大肌群訓練誘發的發炎反應，建議額外補充高劑量 Omega-3，並搭配台灣${currentSeason}盛產的 ${seasonalFruits}，以強效清除活性氧類 (ROS)。`;
         } else {
-           nutrition += `本次訓練局部代謝壓力較低。建議以台灣${currentSeason}當季的 ${seasonalFruits} 為主，協助清除游離自由基，不需額外大幅增加精緻碳水化合物的攝取。`;
+           nutrition += `局部代謝壓力較低。建議以台灣${currentSeason}當季的 ${seasonalFruits} 為主，協助清除游離自由基。`;
         }
       } else if (isFatigued) {
         const sourceText = dataSource === 'wearable' ? '心率變異度 (HRV) 低落或睡眠嚴重不足' : '細胞相位角 (PhA < 5.0) 偏低';
-        nutrition = `⚡ [中樞神經修復介入] 偵測到 ${sourceText}，反映顯著的交感神經亢奮與損耗。`;
+        nutrition = `⚡ [中樞神經修復介入] 偵測到 ${sourceText}，反映顯著的神經損耗。`;
         if (metabolicDemand === 'high') {
-           nutrition += `大肌群訓練將進一步榨乾神經系統。黃金窗口內必須強制補充高生物價蛋白質（如：牛肉），並攝取台灣${currentSeason}特產的 ${seasonalFruits} 作為優質的果糖來源，加速 ATP-PC 系統回補並輔助神經元修復。`;
+           nutrition += `黃金窗口內必須強制補充高生物價蛋白質，並攝取台灣${currentSeason}特產的 ${seasonalFruits} 加速 ATP-PC 系統回補並輔助神經元修復。`;
         } else {
-           nutrition += `針對中/小肌群訓練，營養策略應著重於細胞膜重建，推薦攝取全脂雞蛋搭配台灣${currentSeason}的 ${seasonalFruits}，提供抗氧化保護網，避免過度進食導致消化負擔。`;
+           nutrition += `建議攝取全脂雞蛋搭配台灣${currentSeason}的 ${seasonalFruits}，提供抗氧化保護網，避免過度進食導致消化負擔。`;
         }
       } else {
         nutrition = '⚖️ [合成代謝最佳化] 目前自律神經與各項代謝指標穩定，展現良好的合成代謝潛力。';
         if (metabolicDemand === 'high') {
-           nutrition += `🎯 因應大肌群產生的巨大肝醣缺口，啟動「高碳水/高蛋白」策略。建議攝取根莖類澱粉搭配去骨雞腿肉，餐後補充台灣${currentSeason}盛產的 ${seasonalFruits}，以完美的微量營養素矩陣最大化 mTORC1 肌肉合成訊號。`;
+           nutrition += `🎯 啟動「高碳水/高蛋白」策略，餐後補充台灣${currentSeason}盛產的 ${seasonalFruits}，以完美的微量營養素矩陣最大化 mTORC1 肌肉合成訊號。`;
         } else {
-           nutrition += `🎯 中/小肌群熱量消耗有限。建議採用「中低碳水/適度蛋白」策略，保留營養額度給優質脂肪，並以台灣${currentSeason}的 ${seasonalFruits} 作為點綴，嚴格控制無謂的熱量盈餘以防脂肪囤積。`;
+           nutrition += `🎯 建議採用「中低碳水/適度蛋白」策略，並以台灣${currentSeason}的 ${seasonalFruits} 作為點綴，嚴格控制無謂的熱量盈餘以防脂肪囤積。`;
         }
       }
 
@@ -174,18 +209,13 @@ export default function App() {
         currentEquipment = currentEquipment.filter(eq => eq !== 'barbell');
         reasoning.push('因應系統性神經疲勞，演算法已主動排除需高度神經徵召之「槓鈴自由重量」動作。');
       }
-
-      if (asymmetry > 5.0) {
-        reasoning.push(`[肌肉不對稱補償] 偵測到顯著節段不對稱 (${asymmetry}%)，已強制導入單側獨立發力動作。`);
-      }
-
+      if (asymmetry > 5.0) reasoning.push(`[肌肉不對稱補償] 偵測到顯著節段不對稱 (${asymmetry}%)，強制導入單側獨立發力動作。`);
       if (isInflamed) {
         const sourceName = dataSource === 'wearable' ? '安靜心率 (RHR)' : '細胞水分比 (ECW)';
-        feedback.push(`🚨 [壓力防護] 偵測到 ${sourceName} 異常，請注意組間恢復時間，並避免力竭。`);
-        reasoning.push('為避免過度訓練惡化，演算法已主動過濾高離心拉伸 (Eccentric-focused) 之負荷動作。');
+        feedback.push(`🚨 [壓力防護] 偵測到 ${sourceName} 異常，請避免力竭並過濾高離心動作。`);
       }
 
-      // 3. 基礎生物力學適配邏輯 (依部位)
+      // 3. 基礎生物力學適配邏輯
       switch (targetMuscleGroup) {
         case 'quadriceps_and_glutes':
           if (femurRatio === 'high') {
@@ -202,7 +232,6 @@ export default function App() {
           else if (currentEquipment.includes('cable_machine')) exercises.push('Cable Pull-through (纜繩後拉)');
           else if (currentEquipment.includes('kettlebell')) exercises.push('Kettlebell Swing (壺鈴擺盪)');
           break;
-
         case 'chest_and_triceps':
           reasoning.push('胸三頭肌群訓練已根據您的核心穩定度與可用器材進行配對。');
           if (currentEquipment.includes('bench') && currentEquipment.includes('barbell') && coreStability !== 'low') exercises.push('Barbell Bench Press (槓鈴臥推)');
@@ -210,7 +239,6 @@ export default function App() {
           if (currentEquipment.includes('cable_machine')) { exercises.push('Cable Chest Fly (纜繩飛鳥)'); exercises.push('Cable Tricep Pushdown (纜繩三頭肌下壓)'); }
           else if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Overhead Tricep Extension (啞鈴過頭三頭伸展)');
           break;
-          
         case 'back_and_biceps':
           reasoning.push('背二頭肌群著重於垂直與水平拉力動作的平衡。');
           if (currentEquipment.includes('pull_up_bar')) exercises.push('Pull-ups (引體向上)');
@@ -219,7 +247,6 @@ export default function App() {
           else if (currentEquipment.includes('barbell') && coreStability !== 'low') exercises.push('Barbell Row (槓鈴划船)');
           if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Bicep Curl (啞鈴二頭彎舉)');
           break;
-
         case 'hamstrings_and_calves':
            if (!isInflamed) {
               reasoning.push('已安排高張力的後側鏈訓練。');
@@ -231,7 +258,6 @@ export default function App() {
            if (currentEquipment.includes('cable_machine')) exercises.push('Cable Pull-through (纜繩後拉)');
            if (currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Calf Raise (啞鈴提踵)');
            break;
-
         case 'shoulders_and_core':
            reasoning.push('肩部訓練已根據您的核心穩定度評估最佳抗重力姿勢。');
            if (coreStability === 'high' && currentEquipment.includes('barbell')) exercises.push('Standing Barbell Overhead Press (站姿槓鈴肩推)');
@@ -244,7 +270,6 @@ export default function App() {
       if (exercises.length === 0) {
          exercises.push('Bodyweight Squat (徒手深蹲)');
          exercises.push('Push-ups (伏地挺身)');
-         reasoning.push('⚠️ 在目前的環境約束下，自動降級為自體重量基礎訓練模式。');
       }
 
       // 4. RPE 自律調節反饋
@@ -256,7 +281,8 @@ export default function App() {
         recommended_exercises: [...new Set(exercises)],
         biomechanical_reasoning: reasoning.join(' '),
         autoregulation_feedback: feedback.join(' '),
-        nutrition_prescription: nutrition
+        nutrition_prescription: nutrition,
+        cvs_protocol: { pre: randomPre, post: randomPost, rationale: cvsData.rationale } // ✨ 寫入隨機抽樣的 CVS 處方
       });
 
     } catch (err: any) {
@@ -276,16 +302,15 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">Antigravity Fitness OS</h1>
-              <p className="text-sm text-gray-400 font-mono mt-1">v4.1 // Localized Seasonal Nutrition AI</p>
+              <p className="text-sm text-gray-400 font-mono mt-1">v4.2 // Dual-Engine CDSS & CVS Dietary Rotation</p>
             </div>
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:block">
-          {/* 左側輸入區塊 */}
+          {/* 左側輸入區塊保持與 v4.1 完全一致，以節省篇幅 */}
           <div className={`lg:col-span-5 space-y-6 print:hidden ${isExporting ? 'hidden' : ''}`}>
-            
-            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 space-y-6">
+             <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 space-y-6">
               <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
                 <Ruler className="w-5 h-5 text-blue-400" />
                 <h2 className="text-lg font-semibold text-gray-200">Base Biometrics (基礎物理特徵)</h2>
@@ -490,16 +515,36 @@ export default function App() {
                       <p className="text-sm leading-relaxed text-gray-300">{result.biomechanical_reasoning}</p>
                     </div>
                   </section>
+                  
+                  {/* ✨ 新增：便利商店實戰採購區塊 (CVS Protocol) */}
                   <section>
-                    <h3 className="text-sm font-mono mb-3 uppercase tracking-wider text-gray-500">Autoregulation Feedback</h3>
-                    <div className="p-5 bg-emerald-950/20 border border-emerald-900/30 rounded-lg relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
-                        <p className="text-sm leading-relaxed text-gray-300">{result.autoregulation_feedback}</p>
+                    <h3 className="text-sm font-mono mb-3 uppercase tracking-wider text-purple-400/80">🏪 CVS Nutrition Protocol (實戰採購)</h3>
+                    <div className="p-5 bg-purple-950/20 border border-purple-900/30 rounded-lg relative overflow-hidden space-y-4">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+                      
+                      <div className="flex flex-col gap-2 border-b border-purple-900/50 pb-3">
+                        <span className="text-xs font-bold text-purple-400 tracking-wider">PRE-WORKOUT (練前 30-90 分鐘)</span>
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                           <ShoppingBag className="w-4 h-4 text-gray-500" />
+                           {result.cvs_protocol.pre}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 border-b border-purple-900/50 pb-3">
+                        <span className="text-xs font-bold text-purple-400 tracking-wider">POST-WORKOUT (練後 60 分鐘內)</span>
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                           <ShoppingBag className="w-4 h-4 text-gray-500" />
+                           {result.cvs_protocol.post}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-xs font-bold text-gray-500">生理機制摘要：</span>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">{result.cvs_protocol.rationale}</p>
                       </div>
                     </div>
                   </section>
+
                   <section>
                     <h3 className="text-sm font-mono mb-3 uppercase tracking-wider text-amber-500/80">🍎 Seasonal Nutrition Matrix ({currentSeason})</h3>
                     <div className="p-5 bg-amber-950/20 border border-amber-900/30 rounded-lg relative overflow-hidden">
