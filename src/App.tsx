@@ -566,8 +566,67 @@ export default function App() {
           </div>
         </div>
       </div>
+      {/* 隱藏的 PDF 匯出畫布 (Hidden Export View) */}
       <div className="overflow-hidden h-0 w-0 absolute top-[-9999px] left-[-9999px]">
-        {/* PDF Export Markup Hidden */}
+        <div ref={exportRef} style={{ width: '800px', backgroundColor: '#ffffff', padding: '40px', color: '#0f172a' }}>
+          <div style={{ marginBottom: '32px', borderBottom: '2px solid #1e293b', paddingBottom: '16px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Antigravity Fitness OS // 個人化生物力學與營養處方</h1>
+            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '8px' }}>Generated on: {new Date().toLocaleString()}</p>
+          </div>
+          
+          {result && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              <section>
+                <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Recommended Exercises</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {result.recommended_exercises.map((ex, idx) => (
+                    <div key={idx} style={{ padding: '16px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1d4ed8', fontSize: '12px', fontFamily: 'monospace' }}>
+                        {idx + 1}
+                      </div>
+                      <span style={{ fontWeight: 500, color: '#1e293b' }}>{ex}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              
+              <section>
+                <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Biomechanical Reasoning</h3>
+                <div style={{ padding: '20px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#3b82f6' }}></div>
+                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#334155', margin: 0 }}>{result.biomechanical_reasoning}</p>
+                </div>
+              </section>
+
+              {/* ✨ 新增：便利商店實戰採購的匯出排版 */}
+              <section>
+                <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#7e22ce' }}>CVS Nutrition Protocol (實戰採購)</h3>
+                <div style={{ padding: '20px', backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#a855f7' }}></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9333ea' }}>PRE-WORKOUT (練前 30-90 分鐘)</span>
+                      <p style={{ fontSize: '14px', color: '#334155', margin: '4px 0 0 0' }}>{result.cvs_protocol.pre}</p>
+                    </div>
+                    <div style={{ borderTop: '1px solid #e9d5ff', paddingTop: '12px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9333ea' }}>POST-WORKOUT (練後 60 分鐘內)</span>
+                      <p style={{ fontSize: '14px', color: '#334155', margin: '4px 0 0 0' }}>{result.cvs_protocol.post}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* ✨ 台灣四季旬食的匯出排版 */}
+              <section>
+                <h3 style={{ fontSize: '14px', fontFamily: 'monospace', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b45309' }}>Seasonal Nutrition Matrix ({currentSeason})</h3>
+                <div style={{ padding: '20px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', backgroundColor: '#f59e0b' }}></div>
+                  <p style={{ fontSize: '14px', lineHeight: 1.6, color: '#334155', margin: 0 }}>{result.nutrition_prescription}</p>
+                </div>
+              </section>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
