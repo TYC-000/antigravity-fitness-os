@@ -3,7 +3,7 @@ import {
   Activity, BrainCircuit, Loader2, AlertCircle, CheckCircle2, 
   Ruler, Shield, Zap, Target, Dumbbell, SquareActivity, 
   Cylinder, Rocket, Microscope, Printer, Apple,
-  Watch, Moon, HeartPulse, ShoppingBag 
+  Watch, Moon, HeartPulse, ShoppingBag, Bike 
 } from 'lucide-react';
 
 const EQUIPMENT_LIST = [
@@ -15,6 +15,7 @@ const EQUIPMENT_LIST = [
   { id: 'leg_press', label: '腿推機', icon: SquareActivity },
   { id: 'kettlebell', label: '壺鈴', icon: Dumbbell },
   { id: 'pull_up_bar', label: '單槓', icon: Activity },
+  { id: 'cycling', label: '飛輪', icon: Bike },
 ];
 
 const MUSCLE_GROUPS = [
@@ -250,6 +251,7 @@ export default function App() {
             if (asymmetry > 5.0 && currentEquipment.includes('dumbbells')) exercises.push('Dumbbell Bulgarian Split Squat (單側保加利亞分腿蹲)');
             else if (currentEquipment.includes('cable_machine')) exercises.push('Cable Pull-through (纜繩後拉)');
             else if (currentEquipment.includes('kettlebell')) exercises.push('Kettlebell Swing (壺鈴擺盪)');
+            if (currentEquipment.includes('cycling')) exercises.push('Stationary Cycling (飛輪)');
             break;
           case 'chest_and_triceps':
             reasoning.push('胸三頭訓練已根據核心穩定度與可用器材配對。');
